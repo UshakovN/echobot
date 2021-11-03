@@ -10,7 +10,6 @@ import (
 	"strconv"
 )
 
-// Точка входа программы
 func main() {
 	botAccessToken := "2056045746:AAEHVepiBuHuBHTSmN-kBlGDaSDCBbEMWmk"
 	botApi := "https://api.telegram.org/bot"

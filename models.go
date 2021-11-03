@@ -16,7 +16,6 @@ type Chat struct {
 	ChatId int `json:"id"`
 }
 
-// REST ответ
 type RestResponse struct {
 	Result []Update `json:"result"`
 }
