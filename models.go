@@ -8,8 +8,22 @@ type Update struct {
 }
 
 type Message struct {
-	Chat Chat   `json:"chat"`
-	Text string `json:"text"`
+	Chat  Chat   `json:"chat"`
+	Text  string `json:"text"`
+	Voice Voice  `json:"voice"`
+}
+
+type Voice struct {
+	FileId   string `json:"file_id"`
+	Duration int    `json:"duration"`
+}
+
+type FileResponse struct {
+	File File `json:"result"`
+}
+
+type File struct {
+	Path string `json:"file_path"`
 }
 
 type Chat struct {
@@ -23,4 +37,5 @@ type RestResponse struct {
 type BotMessage struct {
 	ChatId int    `json:"chat_id"`
 	Text   string `json:"text"`
+	Voice  Voice  `json:"voice"`
 }
