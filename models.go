@@ -19,7 +19,7 @@ type Voice struct {
 }
 
 type FileResponse struct {
-	File File `json:"result"`
+	Result File `json:"result"`
 }
 
 type File struct {

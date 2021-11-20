@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 )
 
@@ -54,8 +56,6 @@ func getFile(botRequest string, message BotMessage) error {
 
 	println("ID Файла: " + message.Voice.FileId)
 
-	// https://api.telegram.org/bot<token>/getFile?file_id=<file_id>
-
 	if err != nil {
 		return err
 	}
@@ -67,16 +67,30 @@ func getFile(botRequest string, message BotMessage) error {
 		return err
 	}
 
-	var file FileResponse
-	err = json.Unmarshal(body, &file)
+	var fileResponse FileResponse
+	err = json.Unmarshal(body, &fileResponse)
 
 	if err != nil {
 		return err
 	}
 
-	println("Путь файла: " + file.File.Path)
+	println("Путь файла: " + fileResponse.Result.Path)
 
-	_, err = http.Get("https://api.telegram.org/file/" + "2056045746:AAEHVepiBuHuBHTSmN-kBlGDaSDCBbEMWmk" + "/" + file.File.Path)
+	resp, err = http.Get("https://api.telegram.org/file/bot" + "2056045746:AAEHVepiBuHuBHTSmN-kBlGDaSDCBbEMWmk" + "/" + fileResponse.Result.Path)
+
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	file, err := os.Create("test.oga")
+
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	_, err = io.Copy(file, resp.Body)
 
 	if err != nil {
 		return err
