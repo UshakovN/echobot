@@ -22,6 +22,7 @@ type Model struct {
 
 // Точка старта бота
 func main() {
+
 	var model Model
 	model.botAccessToken = "bot2056045746:AAEHVepiBuHuBHTSmN-kBlGDaSDCBbEMWmk"
 	model.botApi = "https://api.telegram.org/"

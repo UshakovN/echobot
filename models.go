@@ -40,6 +40,8 @@ type BotMessage struct {
 	Voice  Voice  `json:"voice"`
 }
 
+// Модели Yandex API
+
 type YandexResponse struct {
 	Result string `json:"result"`
 }

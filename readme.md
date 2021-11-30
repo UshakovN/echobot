@@ -1,2 +1,1 @@
-# Использование Telegram API
-## Для создания бота
+# telegram-api
