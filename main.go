@@ -4,35 +4,48 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
+	"strings"
 )
 
+// Модель бота
+type Model struct {
+	botAccessToken string
+	botApi         string
+	botRequest     string
+	yandexApiKey   string
+	yandexRequest  string
+}
+
+// Точка старта бота
 func main() {
-	botAccessToken := "2056045746:AAEHVepiBuHuBHTSmN-kBlGDaSDCBbEMWmk"
-	botApi := "https://api.telegram.org/bot"
-	botRequest := botApi + botAccessToken
+	var model Model
+	model.botAccessToken = "bot2056045746:AAEHVepiBuHuBHTSmN-kBlGDaSDCBbEMWmk"
+	model.botApi = "https://api.telegram.org/"
+	model.botRequest = model.botApi + model.botAccessToken
+	model.yandexApiKey = "AQVNwbhyxMeFNrOcHO6sthjsOgd5gzq3EPhIkCir"
+	model.yandexRequest = "https://stt.api.cloud.yandex.net/speech/v1/stt:recognize?"
+
 	offset := 0
 	for {
-		updates, err := getUpdates(botRequest, offset)
+		updates, err := getUpdates(model, offset)
 		if err != nil {
 			log.Println("Error", err.Error())
 		}
 		fmt.Println(updates)
 		for _, update := range updates {
-			respond(botRequest, update)
+			respond(model, update)
 			offset = update.UpdateId + 1
 		}
 	}
 }
 
 // Запрос обновлений
-func getUpdates(botRequest string, offset int) ([]Update, error) {
-	resp, err := http.Get(botRequest + "/getUpdates" + "?offset=" + strconv.Itoa(offset))
+func getUpdates(model Model, offset int) ([]Update, error) {
+	resp, err := http.Get(model.botRequest + "/getUpdates" + "?offset=" + strconv.Itoa(offset))
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +54,7 @@ func getUpdates(botRequest string, offset int) ([]Update, error) {
 	if err != nil {
 		return nil, err
 	}
-	var response RestResponse
+	var response UpdateResponse
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		return nil, err
@@ -50,57 +63,97 @@ func getUpdates(botRequest string, offset int) ([]Update, error) {
 }
 
 // Получить файл с голосовым сообщением
-func getFile(botRequest string, message BotMessage) error {
+func getFile(model Model, message BotMessage) (string, error) {
 
-	resp, err := http.Get(botRequest + "/getFile?file_id=" + message.Voice.FileId)
-
+	var transcription string = "uncorrect"
+	respPath, err := http.Get(model.botRequest + "/getFile?file_id=" + message.Voice.FileId)
+	if err != nil {
+		return transcription, err
+	}
 	println("ID Файла: " + message.Voice.FileId)
 
+	defer respPath.Body.Close()
+	bodyPath, err := ioutil.ReadAll(respPath.Body)
 	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-
-	if err != nil {
-		return err
+		return transcription, err
 	}
 
 	var fileResponse FileResponse
-	err = json.Unmarshal(body, &fileResponse)
-
+	err = json.Unmarshal(bodyPath, &fileResponse)
 	if err != nil {
-		return err
+		return transcription, err
 	}
 
 	println("Путь файла: " + fileResponse.Result.Path)
-
-	resp, err = http.Get("https://api.telegram.org/file/bot" + "2056045746:AAEHVepiBuHuBHTSmN-kBlGDaSDCBbEMWmk" + "/" + fileResponse.Result.Path)
-
+	respFile, err := http.Get(model.botApi + "/file/" + model.botAccessToken + "/" + fileResponse.Result.Path)
 	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	file, err := os.Create("test.oga")
-
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	_, err = io.Copy(file, resp.Body)
-
-	if err != nil {
-		return err
+		return transcription, err
 	}
 
-	return nil
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+
+	param := strings.Join([]string{"topic=general", "lang=ru-RU"}, "&")
+
+	println("Параметры запроса: " + param)
+	println("Пример запроса: " + model.yandexRequest + param)
+	println("Апи-Ключ Яндекса: " + model.yandexApiKey)
+
+	req, err := http.NewRequest(http.MethodPost, model.yandexRequest+param, respFile.Body)
+	if err != nil {
+		return transcription, err
+	}
+
+	req.Header.Add("Authorization", "Api-Key "+model.yandexApiKey)
+	respTranscription, err := client.Do(req)
+	if err != nil {
+		return transcription, err
+	}
+
+	defer respTranscription.Body.Close()
+	bodyTransription, err := ioutil.ReadAll(respTranscription.Body)
+	if err != nil {
+		return transcription, err
+	}
+
+	var yandexResponse YandexResponse
+	err = json.Unmarshal(bodyTransription, &yandexResponse)
+	if err != nil {
+		return transcription, err
+	}
+
+	transcription = yandexResponse.Result
+
+	/*
+
+		if err != nil {
+			return err
+		}
+		defer resp.Body.Close()
+
+		file, err := os.Create("test.oga")
+
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+
+		_, err = io.Copy(file, resp.Body)
+
+		if err != nil {
+			return err
+		}
+
+	*/
+
+	return transcription, nil
 }
 
 // Ответ на обновления
-func respond(botRequest string, update Update) error {
+func respond(model Model, update Update) error {
 	var message = BotMessage{
 		ChatId: update.Message.Chat.ChatId,
 		Text:   update.Message.Text,
@@ -108,8 +161,14 @@ func respond(botRequest string, update Update) error {
 	}
 
 	if message.Voice.Duration != 0 {
-		message.Text = "Голосовое сообщение"
-		getFile(botRequest, message)
+		output, err := getFile(model, message)
+		if err != nil {
+			return err
+		}
+		message.Text = output
+
+		// message.Text = "Голосовое сообщение"
+
 	}
 
 	buffer, err := json.Marshal(message)
@@ -117,7 +176,7 @@ func respond(botRequest string, update Update) error {
 		return err
 	}
 
-	_, err = http.Post(botRequest+"/sendMessage", "application/json", bytes.NewBuffer(buffer))
+	_, err = http.Post(model.botRequest+"/sendMessage", "application/json", bytes.NewBuffer(buffer))
 
 	if err != nil {
 		return err

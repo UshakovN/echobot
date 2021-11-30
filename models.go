@@ -30,7 +30,7 @@ type Chat struct {
 	ChatId int `json:"id"`
 }
 
-type RestResponse struct {
+type UpdateResponse struct {
 	Result []Update `json:"result"`
 }
 
@@ -38,4 +38,8 @@ type BotMessage struct {
 	ChatId int    `json:"chat_id"`
 	Text   string `json:"text"`
 	Voice  Voice  `json:"voice"`
+}
+
+type YandexResponse struct {
+	Result string `json:"result"`
 }
