@@ -91,6 +91,13 @@ func getFile(model Model, message BotMessage) (string, error) {
 		return transcription, err
 	}
 
+	/*
+		defer respFile.Body.Close()
+		file, _ := os.Create("test.oga")
+		defer file.Close()
+		io.Copy(file, respFile.Body)
+	*/
+
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
@@ -127,28 +134,6 @@ func getFile(model Model, message BotMessage) (string, error) {
 	}
 
 	transcription = yandexResponse.Result
-
-	/*
-
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-
-		file, err := os.Create("test.oga")
-
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-
-		_, err = io.Copy(file, resp.Body)
-
-		if err != nil {
-			return err
-		}
-
-	*/
 
 	return transcription, nil
 }
